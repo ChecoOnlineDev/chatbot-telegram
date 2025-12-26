@@ -1,0 +1,16 @@
+services:
+  chatbot_db:
+    image: postgres:15-alpine
+    container_name: xrom_systems_chatbot_db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${DB_NAME}
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASS}
+    ports:
+      - "5432:5432"
+    volumes:
+      - xrom_systems_data:/var/lib/postgresql/data
+
+volumes:
+  xrom_systems_data:
