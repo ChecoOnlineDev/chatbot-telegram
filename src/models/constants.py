@@ -13,7 +13,7 @@ class BotState(Enum):
 class MainMenuOptions(Enum):
     CONSULTAR = "Consultar folio"
     IA = "Asistente IA"
-    SOPORTE = "¿Necesitas ayuda personalizada?, !Contacta a nuestro equipo de soporte!"
+    SOPORTE = "Soporte"
     VOLER = "Volver al menu principal"
     
 

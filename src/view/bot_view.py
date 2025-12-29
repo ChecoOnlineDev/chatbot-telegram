@@ -71,3 +71,12 @@ class ConsultServiceBotView:
             f"• Fecha: {service_data.get('completion_date','N/A')}\n"
         )
         return ButtonsDto(text=text, buttons=NavigationMenuBotView.main_menu_buttons())
+
+class SupportContactBotView:
+    @staticmethod
+    def support_contact_bot_message():
+        text = (
+            "Excelente, si tu problema requiere una atencion mas personalizada"
+            "Contacta a los siguientes numeros, ya sea via whatsapp o por llamada, estamos a tus ordenes!"
+        )
+        return ButtonsDto(text=text, buttons=NavigationMenuBotView.back_to_main_menu_button())
