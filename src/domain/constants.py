@@ -23,17 +23,8 @@ class TechnicalServiceStatus(Enum):
     ON_HOLD = "en espera"
     COMPLETED = "completado"
     CANCELLED = "cancelado"
-    
 
-#estadarizando las respuestas del bot
-@dataclass
-class BotResponse:
-    text: str
-    buttons: list[str] = field(default_factory=list)
+class Platform(Enum):
+    TELEGRAM = "TELEGRAM"
+    WHATSAPP = "WHATSAPP"
 
-#Modelo de mensajes estandar que recibira el bot (lo que ocuparemos)
-@dataclass
-class HandleMessageDto:
-    user_id: int
-    message_text: str
-    user_name: str

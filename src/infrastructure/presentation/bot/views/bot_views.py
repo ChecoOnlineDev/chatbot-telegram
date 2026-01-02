@@ -1,4 +1,5 @@
-from src.domain.constants import MainMenuOptions, BotResponse
+from src.application.dtos.bot_dtos import BotResponse
+from src.domain.constants import MainMenuOptions
 
 #Valores que hay en el menu de navegacion principal y helper de volver al menu
 class NavigationMenuBotView:
