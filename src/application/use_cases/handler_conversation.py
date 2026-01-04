@@ -1,20 +1,20 @@
 from typing import Dict, Any, Callable
-
-from application.dtos.bot_dtos import BotResponse, HandleMessageDto
-from domain.entities.user_session import UserSession
-from domain.ports.user_session_port import ISessionRepository
+from src.application.dtos.bot_dtos import BotResponse, HandleMessageDto
+from src.domain.entities.user_session import UserSession
+from src.domain.ports.user_session_port import ISessionRepository
 from src.domain.constants import BotState, MainMenuOptions
+from src.application.use_cases.get_service_by_folio import GetServiceByFolioUseCase
 
 class HandleConversationUseCase:
     def __init__(
         self, 
         session_repo: ISessionRepository, 
         views: Dict[str, Any], 
-        services: Dict[str, Any]
+        get_service_use_case: GetServiceByFolioUseCase
     ):
         self.repo = session_repo
         self.views = views
-        self.services = services
+        self.get_service_use_case = get_service_use_case
 
     def execute(self, input_dto: HandleMessageDto) -> BotResponse:
         # 1. Obtener estado actual (Dominio)
@@ -57,31 +57,46 @@ class HandleConversationUseCase:
         return self._transition_to(dto.user_id, BotState.MAIN_MENU)
 
     def _handle_main_menu(self, dto: HandleMessageDto, session: UserSession) -> BotResponse:
-        selection = dto.message_text.strip().upper()
+        selection = dto.message_text.strip().lower()
 
         if selection == MainMenuOptions.CONSULTAR.value:
             return self._transition_to(dto.user_id, BotState.WAITING_FOR_FOLIO)
+        
+        if selection == MainMenuOptions.SOPORTE.value:
+            # TODO: Implementar transición a soporte si existe el estado, 
+            # por ahora retornamos la vista de contacto directamente o transicionamos
+            return self.views['support'].support_contact_bot_message()
+
+        if selection == MainMenuOptions.IA.value:
+             # TODO: Logica de IA
+             return BotResponse(text="Asistente IA en construcción 🚧")
+
         
         # Si no entiende la opción, devuelve mensaje de error (sin cambiar estado)
         return self.views['common'].invalid_option_message()
 
     def _handle_waiting_for_folio(self, dto: HandleMessageDto, session: UserSession) -> BotResponse:
-        folio_input = dto.message_text.strip()
+        # Delegamos la logica de negocio al caso de uso especifico
+        response = self.get_service_use_case.execute(dto)
         
-        # Uso de servicios de dominio/infraestructura inyectados
-        normalized = self.services['folio'].validate_format(folio_input)
-        if not normalized:
-            return self.views['consult'].invalid_format_message()
-
-        result = self.services['folio'].search(normalized)
-        if result:
-            # Si lo encuentra, muestra info y resetea al menú
-            view_data = self.views['consult'].show_details(result)
-            self._transition_to(dto.user_id, BotState.MAIN_MENU)
-            return view_data
+        if response.found and response.service_details:
+             self._transition_to(dto.user_id, BotState.MAIN_MENU)
+             
+             # Convertimos el DTO de detalles a diccionario para pasarlo a la vista
+             service_data = {
+                 'folio': response.service_details.folio,
+                 'service_type': response.service_details.service_reason, # Asumimos 'reason' como tipo por ahora
+                 'status': response.service_details.status,
+                 'completion_date': response.service_details.completion_date or "Pendiente"
+             }
+             return self.views['consult'].show_service_details_by_folio(service_data)
         
-        return self.views['consult'].not_found_message(folio_input)
-
-    #def _handle_ai_mode(self, dto: HandleMessageDto, session: UserSession) -> BotResponse:
-        # Aquí iría la integración con LangChain o tu servicio de IA
-        return BotResponse("Modo IA activado. (En desarrollo)")
+        # Si no se encontró (o el formato era invalido), usamos la vista de error
+        # El caso de uso devuelve un mensaje generico, pero la vista es mas bonita.
+        # Intentamos extraer el folio si viene en el mensaje original para mostrarlo
+        # Ojo: si el formato era invalido (response.found=False) tal vez no haya folio claro.
+        
+        # Para mantener simpleza, si no se encontró y hay un texto, asumimos que es el mensaje de error "friendly"
+        # pero la vista pide un folio.
+        
+        return BotResponse(text=response.friendly_message)

@@ -1,4 +1,5 @@
 from pydantic_settings import BaseSettings #type: ignore
+import redis
 
 class Settings(BaseSettings):
     # Configuración de Redis
@@ -10,5 +11,15 @@ class Settings(BaseSettings):
 
     class Config:
         env_file = ".env"
+        extra = "ignore"
 
 redis_settings = Settings()
+
+def get_redis_client():
+    return redis.Redis(
+        host=redis_settings.REDIS_HOST,
+        port=redis_settings.REDIS_PORT,
+        db=redis_settings.REDIS_DB,
+        password=redis_settings.REDIS_PASSWORD,
+        decode_responses=True
+    )

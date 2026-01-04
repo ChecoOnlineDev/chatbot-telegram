@@ -1,19 +1,18 @@
 from dataclasses import dataclass
 from datetime import datetime
+from typing import Optional
 from src.domain.constants import TechnicalServiceStatus
 
-@dataclass(frozen=True)
-class TechnicalServiceEntity:
+@dataclass
+class TechnicalService:
     folio: str
-    status: TechnicalServiceStatus
-    reception_date: datetime
     service_reason: str
-    
-    #campos opcionales que aparecen segun el status del servicio
-    service_summary: str | None
-    on_hold_reason: str | None
-    cancellation_reason: str | None
-    completion_date: datetime | None
-    delivered_at: datetime | None
-    is_delivered : bool | None = False #este status solo es posible activarlo 
-    #cuando el status sea o cancelado o terminado
+    status: TechnicalServiceStatus
+    reception_date: datetime = datetime.utcnow()
+    service_id: Optional[int] = None
+    service_summary: Optional[str] = None
+    on_hold_reason: Optional[str] = None
+    cancellation_reason: Optional[str] = None
+    completion_date: Optional[datetime] = None
+    delivered_at: Optional[datetime] = None
+    is_delivered: bool = False
