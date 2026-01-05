@@ -55,7 +55,11 @@ class GetServiceByFolioUseCase:
             service_reason=entity.service_reason,
             service_summary=entity.service_summary,
             completion_date=entity.completion_date.strftime(date_fmt) if entity.completion_date else None,
-            is_delivered=entity.is_delivered
+            is_delivered=entity.is_delivered,
+            # Nuevos campos
+            on_hold_reason=entity.on_hold_reason,
+            cancellation_reason=entity.cancellation_reason,
+            delivered_at=entity.delivered_at.strftime(date_fmt) if entity.delivered_at else None
         )
 
         # Construimos el mensaje amigable final

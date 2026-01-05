@@ -15,6 +15,14 @@ class HandleConversationUseCase:
         self.repo = session_repo
         self.views = views
         self.get_service_use_case = get_service_use_case
+        
+        # Mapeo de Handlers por estado
+        self.handlers: Dict[BotState, Callable[[HandleMessageDto, UserSession], BotResponse]] = {
+            BotState.START: self._handle_start,
+            BotState.MAIN_MENU: self._handle_main_menu,
+            BotState.WAITING_FOR_FOLIO: self._handle_waiting_for_folio,
+            #BotState.AI_ASSISTANT: self._handle_ai_mode,
+        }
 
     def execute(self, input_dto: HandleMessageDto) -> BotResponse:
         # 1. Obtener estado actual (Dominio)
@@ -25,15 +33,8 @@ class HandleConversationUseCase:
         if clean_text in ["/START", "VOLVER", "MENU"]:
             return self._transition_to(input_dto.user_id, BotState.MAIN_MENU)
 
-        # 3. Mapeo de Handlers por estado
-        handlers: Dict[BotState, Callable[[HandleMessageDto, UserSession], BotResponse]] = {
-            BotState.START: self._handle_start,
-            BotState.MAIN_MENU: self._handle_main_menu,
-            BotState.WAITING_FOR_FOLIO: self._handle_waiting_for_folio,
-            #BotState.AI_ASSISTANT: self._handle_ai_mode,
-        }
-
-        handler = handlers.get(session.state, self._handle_start)
+        # 3. Delegar al handler correspondiente
+        handler = self.handlers.get(session.state, self._handle_start)
         return handler(input_dto, session)
 
     # --- Handlers de Transición ---

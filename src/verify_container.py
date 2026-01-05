@@ -24,15 +24,13 @@ def verify_wiring():
     # We need to set environment variables or mock them for resources
     # But for wiring check, we assume env vars might be missing but container definition is valid.
     
-    print("Checking BotController...")
+    print("Checking HandleConversationUseCase...")
     try:
         # We need to manually wire or provide resources if they are Resources
-        # providers.Resource executes the function. 'get_db' and 'get_redis_client' might fail if env vars are missing.
-        # However, we are just checking if they are wired.
-        controller = container.bot_controller()
-        print(f"BotController resolved: {controller}")
+        use_case = container.conversation_handler()
+        print(f"HandleConversationUseCase resolved: {use_case}")
     except Exception as e:
-        print(f"Failed to resolve BotController: {e}")
+        print(f"Failed to resolve HandleConversationUseCase: {e}")
         # Detailed error might help
         import traceback
         traceback.print_exc()

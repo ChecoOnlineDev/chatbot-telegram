@@ -1,4 +1,3 @@
-import json
 import logging
 from redis import Redis
 from src.domain.entities.user_session import UserSession
@@ -17,24 +16,18 @@ class RedisSessionRepository(ISessionRepository):
             if not data:
                 return UserSession(state=BotState.START)
             
-            decoded = json.loads(data) # type: ignore
-            return UserSession(
-                state=BotState[decoded['state']],
-                metadata=decoded.get('metadata', {})
-            )
+            # Pydantic handles JSON deserialization and Enum conversion automatically
+            return UserSession.model_validate_json(data)
         except Exception as e:
             logging.error(f"Redis Error: {e}")
             return UserSession(state=BotState.START)
 
     def save_session(self, user_id: int, session: UserSession) -> None:
         try:
-            payload = {
-                "state": session.state.name,
-                "metadata": session.metadata
-            }
+            # Pydantic handles JSON serialization and Enum conversion
             self.__redis.set(
                 f"{self.__prefix}{user_id}", 
-                json.dumps(payload), 
+                session.model_dump_json(), 
                 ex=redis_settings.SESSION_TTL
             )
         except Exception as e:

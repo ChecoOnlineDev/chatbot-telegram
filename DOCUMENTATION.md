@@ -45,6 +45,8 @@ class Container(containers.DeclarativeContainer):
 
     # 4. Casos de Uso (Los Gerentes)
     # Inyecta al obrero (repo) dentro del gerente (Use Case)
+    # 4. Casos de Uso (Los Gerentes)
+    # Inyecta al obrero (repo) dentro del gerente (Use Case)
     handle_conversation_use_case = providers.Factory(
         HandleConversationUseCase,
         session_repo=user_session_repository,  # <--- CONEXIÓN MÁGICA
@@ -52,11 +54,8 @@ class Container(containers.DeclarativeContainer):
         get_service_use_case=get_service_by_folio_use_case
     )
 
-    # 5. Controladores (La Puerta)
-    bot_controller = providers.Factory( # <--- Lo que inyectamos en el Handler
-        BotController,
-        handle_conversation_use_case=handle_conversation_use_case
-    )
+    # Nota: Se eliminó el BotController para simplificar el flujo. 
+    # Los Handlers llaman directamente al Use Case.
 ```
 
 ---
@@ -69,17 +68,11 @@ Esta sección explica de dónde viene cada pieza clave en los archivos principal
 *   **Ubicación**: `src/infrastructure/presentation/bot/handlers/`
 *   **Rol**: Traducir "Telegram" a "Python Puro".
 *   **Importa y Usa**:
-    *   `BotController` (Inyectado por el Container).
+    *   `HandleConversationUseCase` (Inyectado por el Container).
     *   `HandleMessageDto` (De `src/application/dtos/bot_dtos.py`): Para empaquetar los datos.
     *   `dependency_injector.wiring`: `Provide` y `inject` para pedirle ayuda al Contenedor.
 
-### 2. `telegram_bot_controller.py` (El Controlador)
-*   **Ubicación**: `src/infrastructure/presentation/bot/controllers/`
-*   **Rol**: Recibir el DTO y pasárselo al caso de uso correcto.
-*   **Importa y Usa**:
-    *   `HandleConversationUseCase` (De `src/application/use_cases/...`): La lógica real.
-
-### 3. `handler_conversation.py` (El Cerebro)
+### 2. `handler_conversation.py` (El Cerebro)
 *   **Ubicación**: `src/application/use_cases/`
 *   **Rol**: Máquina de estados. Decide si estás saludando, pidiendo folio o en soporte.
 *   **Importa y Usa**:
@@ -103,11 +96,10 @@ Sigue la ruta de una petición desde que le das `Enter` en la terminal hasta que
 6.  **Handler**: `telegram_handlers.handle_telegram_message` atrapa el JSON.
     *   Extrae `user_id`, `text`.
     *   Crea `HandleMessageDto`.
-    *   Llama a `bot_controller.handle_message(dto)`.
+    *   Llama a `conversation_handler.execute(input_dto)`.
 
 ### Fase 3: La Decisión (Clean Core)
-7.  **Controller**: Pasa el balón a `HandleConversationUseCase`.
-8.  **Use Case**:
+7.  **Use Case**:
     *   Llama al Repo (`Redis`) -> "Dame la sesión del usuario 123".
     *   El Repo (`RedisSessionAdapter`) descarga de Redis y devuelve un objeto `UserSession`.
     *   El Use Case ve: Estado actual = `MAIN_MENU`. Mensaje = "consultar folio".
@@ -116,17 +108,17 @@ Sigue la ruta de una petición desde que le das `Enter` en la terminal hasta que
     *   Busca la Vista: `views['consult'].request_folio_message()`.
 
 ### Fase 4: La Respuesta
-9.  **Vista**: `bot_views.py` retorna un objeto `BotResponse`:
+8.  **Vista**: `bot_views.py` retorna un objeto `BotResponse`:
     *   Texto: `<b>Consulta de Servicio</b>...` (HTML)
     *   Botones: `["volver al menu"]`
-10. **Vuelta atrás**:
-    *   Vista -> Use Case -> Controller -> Handler.
-11. **Handler (`Telegram`)**:
+9.  **Vuelta atrás**:
+    *   Vista -> Use Case -> Handler.
+10. **Handler (`Telegram`)**:
     *   Recibe el `BotResponse`.
     *   Convierte la lista de botones a `InlineKeyboardMarkup`.
     *   Dispara: `update.effective_message.reply_text(..., parse_mode='HTML')`.
 
-12. **Usuario**: Ve el mensaje bonito en su celular. 📱
+11. **Usuario**: Ve el mensaje bonito en su celular. 📱
 
 ---
 

@@ -23,9 +23,9 @@ class CommonBotView:
     def welcome_message() -> BotResponse:
         return BotResponse(
             text = (
-                "¡Hola! 👋 Bienvenido a <b>XROM Systems</b> 🚀\n\n"
-                "Soy tu asistente virtual y estoy aquí para ayudarte a agilizar tus procesos. "
-                "¿En qué puedo apoyarte el día de hoy?"
+                "👋 <b>¡Hola, bienvenido a XROM Systems!</b> 🚀\n\n"
+                "Soy tu <b>asistente virtual</b> inteligente. Estoy aquí para ayudarte a consultar el estado de tus servicios y brindarte soporte.\n\n"
+                "👇 <b>Selecciona una opción del menú para comenzar:</b>"
             ),
             buttons = NavigationMenuBotView.main_menu_buttons()
         )
@@ -83,40 +83,77 @@ class ConsultServiceBotView:
     def show_service_details_by_folio(service_data: dict) -> BotResponse:
         folio = service_data.get('folio', 'N/A')
         s_type = service_data.get('service_type', 'No especificado')
-        status = service_data.get('status', 'En proceso').upper()
-        date = service_data.get('completion_date', 'Pendiente')
+        
+        # Status con iconos mejorados
+        raw_status = service_data.get('status', 'Desconocido')
+        status = raw_status.title() # Capitalizar por estetica
+        
+        # Fechas
+        reception = service_data.get('reception_date', 'N/A')
+        completion = service_data.get('completion_date', 'N/A')
+        delivered_at = service_data.get('delivered_at', None)
+        
+        # Razones opcionales
+        on_hold_reason = service_data.get('on_hold_reason')
+        cancellation_reason = service_data.get('cancellation_reason')
+        is_delivered = service_data.get('is_delivered', False)
 
+        # Construcción del Mensaje
+        text_lines = [
+            f"�️ <b>Reporte de Servicio Técnico</b>",
+            f"🆔 <b>Folio:</b> <code>{folio}</code>",
+            "",
+            "📊 <b>Estado Actual:</b>",
+            f"� {status}",
+        ]
+        
+        if on_hold_reason:
+            text_lines.append(f"⚠️ <b>Razón de Espera:</b> {on_hold_reason}")
+            
+        if cancellation_reason:
+            text_lines.append(f"⛔ <b>Motivo de Cancelación:</b> {cancellation_reason}")
 
-        text = (
-            "📋 <b>Detalles del Servicio Encontrado</b>\n\n"
-            f"🆔 <b>Folio:</b> <code>{folio}</code>\n"
-            f"🛠️ <b>Tipo de Servicio:</b> {s_type}\n"
-            f"📊 <b>Estado Actual:</b> {status}\n"
-            f"📅 <b>Fecha de Entrega/Cierre:</b> {date}\n\n"
-            "¿Deseas realizar otra consulta o volver al inicio?"
-        )
-        return BotResponse(text=text, buttons=NavigationMenuBotView.main_menu_buttons())
+        text_lines.extend([
+            "",
+            "📝 <b>Datos del Equipo:</b>",
+            f"📌 <b>Servicio:</b> {s_type}",
+            f"� <b>Recibido el:</b> {reception}",
+        ])
+        
+        if completion:
+            text_lines.append(f"✅ <b>Finalizado el:</b> {completion}")
+            
+        if is_delivered and delivered_at:
+            text_lines.append(f"🚚 <b>Entregado el:</b> {delivered_at}")
+        elif is_delivered:
+             text_lines.append(f"🚚 <b>Entregado:</b> Sí")
+
+        text_lines.extend([
+            "",
+            "¿Necesitas realizar otra operación?"
+        ])
+        
+        return BotResponse(text="\n".join(text_lines), buttons=NavigationMenuBotView.main_menu_buttons())
 
 
 #funciones en caso de que se seleccione la opcion de contactar a alguien de soporte
 class SupportContactBotView:
     @staticmethod
     def support_contact_bot_message() -> BotResponse:
-        # Número de ejemplo (puedes cambiarlo fácilmente después)
-        phone_number = "+52 123 456 7890"
+        phone_number = "+52 753 119 1766" 
         whatsapp_url = f"https://wa.me/{phone_number.replace(' ', '').replace('+', '')}"
 
         text = (
-            "👨‍💻 <b>Atención Personalizada XROM Systems</b>\n\n"
-            "¡Entiendo! Si necesitas asistencia técnica detallada o una solución a medida, "
-            "nuestro equipo de expertos está listo para escucharte. 🤝\n\n"
-            "Puedes contactarnos por estos medios:\n\n"
-            f"📱 <b>WhatsApp:</b> <a href='{whatsapp_url}'>Clic aquí para chatear</a>\n"
-            f"📞 <b>Llamada:</b> <code>{phone_number}</code>\n"
-            "📧 <b>Correo:</b> <code>duvallier@xromsystems.com</code>\n\n"
-            "⏰ <b>Horario de atención:</b>\n"
-            "Lunes a Sabado | 9:00 AM - 7:00 PM\n\n"
-            "Estamos a tus órdenes para resolver cualquier duda. 🚀"
+            "👨‍💻 <b>Centro de Soporte XROM Systems</b>\n\n"
+            "Estamos listos para asesorarte con soluciones a tu medida. 🤝\n\n"
+            "📞 <b>Vías de Contacto Directo:</b>\n"
+            f"� <a href='{whatsapp_url}'><b>WhatsApp (Clic aquí)</b></a>\n"
+            f"� <b>Llamada:</b> <code>{phone_number}</code>\n"
+            "📧 <b>Email:</b> <code>soporte@xromsystems.com</code>\n\n"
+            "🕒 <b>Horario de Atención:</b>\n"
+            "• Lunes a Sábado: 9:00 AM - 7:00 PM\n"
+            "• Domingos: Cerrado\n\n"
+            "<i>Tu satisfacción es nuestra prioridad. 🚀</i>"
         )
         return BotResponse(
             text=text, 

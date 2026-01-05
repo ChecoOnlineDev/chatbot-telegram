@@ -5,7 +5,6 @@ from src.infrastructure.redis.redis_configuration import get_redis_client
 from src.infrastructure.adapters.redis_session_adapter import RedisSessionRepository
 from src.application.use_cases.get_service_by_folio import GetServiceByFolioUseCase
 from src.application.use_cases.handler_conversation import HandleConversationUseCase
-from src.infrastructure.presentation.bot.controllers.telegram_bot_controller import BotController
 from src.infrastructure.presentation.bot.views.bot_views import CommonBotView, ConsultServiceBotView, SupportContactBotView
 
 class Container(containers.DeclarativeContainer):
@@ -47,11 +46,5 @@ class Container(containers.DeclarativeContainer):
         session_repo=session_repository,
         views=views_dict,
         get_service_use_case=get_service_use_case
-    )
-
-    # Bot Controller
-    bot_controller = providers.Factory(
-        BotController,
-        conversation_handler=conversation_handler
     )
 

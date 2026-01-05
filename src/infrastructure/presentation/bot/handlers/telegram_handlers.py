@@ -4,7 +4,7 @@ from telegram.ext import ContextTypes
 from dependency_injector.wiring import inject, Provide
 
 from src.infrastructure.container import Container
-from src.infrastructure.presentation.bot.controllers.telegram_bot_controller import BotController
+from src.application.use_cases.handler_conversation import HandleConversationUseCase
 from src.application.dtos.bot_dtos import HandleMessageDto
 
 logger = logging.getLogger(__name__)
@@ -13,10 +13,10 @@ logger = logging.getLogger(__name__)
 async def handle_telegram_message(
     update: Update,
     context: ContextTypes.DEFAULT_TYPE,
-    bot_controller: BotController = Provide[Container.bot_controller]
+    conversation_handler: HandleConversationUseCase = Provide[Container.conversation_handler]
 ) -> None:
     """
-    Handler genérico de Telegram que actúa como adaptador hacia el BotController.
+    Handler genérico de Telegram.
     Convierte el objeto Update de la librería externa a un DTO de nuestra aplicación.
     """
     if not update.effective_message or not update.effective_user:
@@ -38,17 +38,11 @@ async def handle_telegram_message(
     )
 
     try:
-        # Delegamos al controlador (Capa de Adaptadores -> Capa de Aplicación/Dominio)
-        response_dto = await bot_controller.handle_message(input_dto)
+        # Delegamos al Caso de Uso (Adaptador -> Aplicación)
+        response_dto = conversation_handler.execute(input_dto)
 
-        # Renderizamos la respuesta (Capa de Adaptadores hacia afuera)
+        # Renderizamos la respuesta (Adaptadores hacia afuera)
         # Aquí convertimos nuestro BotResponse agnóstico a objetos de Telegram
-        
-        # TODO: Mapear teclados u otros elementos visuales si BotResponse los tuviera
-        # Por ahora asumimos solo texto o texto + botones básicos si el DTO evoluciona.
-        
-        # En este punto, BotResponse solo tiene 'text'.
-        # Si hubiera menús, el BotResponse debería traer esa info abstracta y aquí la convertimos a InlineKeyboardMarkup.
         
         # Mapeo de botones (BotResponse -> Telegram InlineKeyboardMarkup)
         from telegram import InlineKeyboardButton, InlineKeyboardMarkup
@@ -95,12 +89,10 @@ async def handle_telegram_message(
 async def start_command(
     update: Update, 
     context: ContextTypes.DEFAULT_TYPE,
-    bot_controller: BotController = Provide[Container.bot_controller]
+    conversation_handler: HandleConversationUseCase = Provide[Container.conversation_handler]
 ) -> None:
     """Comando /start explícito"""
     # Reutilizamos la lógica genérica simulando el texto /START
-    # O podríamos tener un método específico en el controller.
-    # Por consistencia con el handle_message, creamos un DTO.
     if not update.effective_message or not update.effective_user:
         return
 
@@ -111,7 +103,8 @@ async def start_command(
         first_name=update.effective_user.first_name
     )
     
-    response = await bot_controller.handle_message(input_dto)
+    # Delegamos al caso de uso directamente
+    response = conversation_handler.execute(input_dto)
     
     # Renderizamos botones si existen (mismo mapping que arriba)
     from telegram import InlineKeyboardButton, InlineKeyboardMarkup

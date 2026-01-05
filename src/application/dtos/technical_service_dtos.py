@@ -15,6 +15,9 @@ class ServiceDetailsDto(BaseModel):
     service_summary: str | None = None
     completion_date: str | None = None
     is_delivered: bool = False
+    on_hold_reason: str | None = None
+    cancellation_reason: str | None = None
+    delivered_at: str | None = None
 
 #respuesta estandarizada para el usuario
 class ServiceInfoResponse(BaseModel):

@@ -1,9 +1,7 @@
-from typing import Any
+from typing import Any, Dict
+from pydantic import BaseModel, Field
 from src.domain.constants import BotState
-from dataclasses import dataclass, field
 
-
-@dataclass(frozen=True)
-class UserSession:
+class UserSession(BaseModel):
     state: BotState
-    metadata: dict[str, Any] = field(default_factory=dict)
+    metadata: Dict[str, Any] = Field(default_factory=dict)
