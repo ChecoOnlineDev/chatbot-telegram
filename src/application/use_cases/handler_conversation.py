@@ -30,7 +30,7 @@ class HandleConversationUseCase:
         
         # 2. Lógica global (Comandos de escape)
         clean_text = input_dto.message_text.strip().upper()
-        if clean_text in ["/START", "VOLVER", "MENU"]:
+        if clean_text in ["/START", "VOLVER", "MENU", MainMenuOptions.VOLVER.value.upper()]:
             return self._transition_to(input_dto.user_id, BotState.MAIN_MENU)
 
         # 3. Delegar al handler correspondiente
@@ -69,8 +69,7 @@ class HandleConversationUseCase:
             return self.views['support'].support_contact_bot_message()
 
         if selection == MainMenuOptions.IA.value:
-             # TODO: Logica de IA
-             return BotResponse(text="Asistente IA en construcción 🚧")
+             return self.views['common'].ai_assistant_under_construction_message()
 
         
         # Si no entiende la opción, devuelve mensaje de error (sin cambiar estado)
@@ -86,18 +85,17 @@ class HandleConversationUseCase:
              # Convertimos el DTO de detalles a diccionario para pasarlo a la vista
              service_data = {
                  'folio': response.service_details.folio,
-                 'service_type': response.service_details.service_reason, # Asumimos 'reason' como tipo por ahora
+                 'service_type': response.service_details.service_reason,
                  'status': response.service_details.status,
-                 'completion_date': response.service_details.completion_date or "Pendiente"
+                 'reception_date': response.service_details.reception_date,
+                 'completion_date': response.service_details.completion_date,
+                 'on_hold_reason': response.service_details.on_hold_reason,
+                 'cancellation_reason': response.service_details.cancellation_reason,
+                 'is_delivered': response.service_details.is_delivered,
+                 'delivered_at': response.service_details.delivered_at
              }
              return self.views['consult'].show_service_details_by_folio(service_data)
         
         # Si no se encontró (o el formato era invalido), usamos la vista de error
-        # El caso de uso devuelve un mensaje generico, pero la vista es mas bonita.
-        # Intentamos extraer el folio si viene en el mensaje original para mostrarlo
-        # Ojo: si el formato era invalido (response.found=False) tal vez no haya folio claro.
-        
-        # Para mantener simpleza, si no se encontró y hay un texto, asumimos que es el mensaje de error "friendly"
-        # pero la vista pide un folio.
-        
-        return BotResponse(text=response.friendly_message)
+        # asegurando que tenga botones de navegación
+        return self.views['consult'].folio_not_found_message(dto.message_text)

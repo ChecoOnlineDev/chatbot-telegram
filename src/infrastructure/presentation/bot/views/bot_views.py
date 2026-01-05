@@ -13,7 +13,7 @@ class NavigationMenuBotView:
         
     @staticmethod
     def back_to_main_menu_button()-> list:
-        return [MainMenuOptions.VOLER.value]
+        return [MainMenuOptions.VOLVER.value]
 
 
 #Vistas y respuestas comunes del bot
@@ -51,6 +51,18 @@ class CommonBotView:
                 "<b>botones del menú</b> que aparecen aquí abajo para poder guiarte correctamente. 👇"
             ),
             buttons = NavigationMenuBotView.main_menu_buttons()
+        )
+
+    @staticmethod
+    def ai_assistant_under_construction_message() -> BotResponse:
+        return BotResponse(
+            text = (
+                "🧠 <b>Asistente IA en Construcción</b> 🚧\n\n"
+                "¡Estamos trabajando arduamente para traerte lo mejor de la Inteligencia Artificial! 🤖✨\n"
+                "Esta funcionalidad estará disponible muy pronto para ayudarte a resolver tus dudas al instante.\n\n"
+                "Mientras tanto, por favor utiliza las otras opciones del menú. 👇"
+            ),
+            buttons = NavigationMenuBotView.back_to_main_menu_button()
         )
 
 

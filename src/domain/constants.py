@@ -14,7 +14,7 @@ class MainMenuOptions(Enum):
     CONSULTAR = "consultar folio"
     IA = "asistente ia"
     SOPORTE = "soporte"
-    VOLER = "volver al menu principal"
+    VOLVER = "volver al menu principal"
 
 #status posibles de un servicio tecnico a consultar
 class TechnicalServiceStatus(Enum):

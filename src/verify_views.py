@@ -22,7 +22,10 @@ def verify_views():
     # 2. Support Contact
     print_response("Support Contact", SupportContactBotView.support_contact_bot_message())
 
-    # 3. Consult Service (In Progress)
+    # 3. AI Assistant (Under Construction)
+    print_response("AI Assistant", CommonBotView.ai_assistant_under_construction_message())
+
+    # 4. Consult Service (In Progress)
     data_in_progress = {
         'folio': 'SV-12345',
         'service_type': 'Mantenimiento Preventivo',
