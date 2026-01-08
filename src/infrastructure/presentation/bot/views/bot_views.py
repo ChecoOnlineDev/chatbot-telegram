@@ -89,7 +89,11 @@ class ConsultServiceBotView:
             "2️⃣ Intentar escribirlo de nuevo.\n"
             "3️⃣ Contactar a soporte técnico si crees que es un error."
         )
-        return BotResponse(text=text, buttons=NavigationMenuBotView.back_to_main_menu_button())
+        buttons = [
+            NavigationMenuBotView.back_to_main_menu_button()[0], # Usar el de volver
+            "Intentar de nuevo" # Boton simple para que el usuario escriba otro
+        ]
+        return BotResponse(text=text, buttons=buttons)
 
     @staticmethod
     def show_service_details_by_folio(service_data: dict) -> BotResponse:

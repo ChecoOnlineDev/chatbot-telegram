@@ -11,10 +11,10 @@ class BotState(Enum):
 
 #Opciones del menu principal del bot
 class MainMenuOptions(Enum):
-    CONSULTAR = "consultar folio"
-    IA = "asistente ia"
-    SOPORTE = "soporte"
-    VOLVER = "volver al menu principal"
+    CONSULTAR = "Consultar Folio"
+    IA = "Asistente IA"
+    SOPORTE = "Soporte"
+    VOLVER = "Volver Al Menú Principal"
 
 #status posibles de un servicio tecnico a consultar
 class TechnicalServiceStatus(Enum):

@@ -1,125 +1,151 @@
-# 🦅 XROM Systems Bot: Anatomía y Guía Técnica
+# Documentación Técnica del Proyecto XROM Systems Bot
 
-> "La simplicidad es la máxima sofisticación." - Leonardo da Vinci
+Este documento describe la arquitectura, flujo de datos y procedimientos para extender o modificar la funcionalidad del bot de Telegram.
 
-Este documento desglosa el bot de Telegram de XROM Systems. No solo explica *qué* hace, sino *por qué* está diseñado así y *cómo* fluye la información átomo por átomo.
+## Arquitectura
 
----
+El proyecto sigue una **Arquitectura Hexagonal (Ports and Adapters)** para desacoplar la lógica de negocio de la infraestructura externa.
 
-## 🏗 El Concepto: Clean Architecture
+### Estructura de Directorios Clave
 
-Imagina tu software como una cebolla.
-*   **El Centro (Dominio)**: Son tus reglas sagradas. "Un usuario tiene una sesión", "Un ticket tiene un folio". No saben nada de Telegram ni de bases de datos.
-*   **La Capa Media (Aplicación)**: Son los gerentes. Dicen: "Cuando alguien pida un folio, búscalo y responde". Coordinan, pero no hacen el trabajo sucio.
-*   **La Capa Externa (Infraestructura)**: Son los obreros. Telegram, Postgres, Redis. Aquí está el código que se ensucia las manos.
-
-Esta separación permite que si mañana Telegram desaparece y te mudas a WhatsApp, **tu centro y capa media no cambian**. Solo cambias los obreros externos.
+*   `src/domain/`: **Núcleo**. Contiene Entidades (`UserSession`, `TechnicalService`), Puertos (Interfaces `ISessionRepository`) y Constantes (`BotState`). **Sin dependencias externas.**
+*   `src/application/`: **Lógica de Negocio**. Contiene Casos de Uso (`HandleConversationUseCase`) y DTOs. Orquesta el flujo.
+*   `src/infrastructure/`: **Implementación**. Contiene Adaptadores (`telegram_handlers`, `sqlalchemy_adapter`), Base de Datos, Redis y el Contenedor de Inyección.
 
 ---
 
-## 💉 El Corazón: Inyección de Dependencias (`Container`)
+## Guía de Desarrollo: Cómo Modificar el Bot
 
-Aquí ocurre la magia. En lugar de que tus archivos digan `import Postgres`, dicen "Necesito *una* base de datos, no me importa cuál". El `Container` es quien se encarga de darles esa base de datos al arrancar.
+A continuación se detallan los pasos exactos y líneas de código necesarias para cambios comunes.
 
-### 📜 Archivo: `src/infrastructure/container.py`
+### 1. Agregar una Opción al Menú Principal
 
-Es el director de orquesta. **De aquí nace todo.**
+**Objetivo**: Agregar un botón "Ubicación" que responda con una dirección fija.
 
+#### Paso 1: Definir la Constante (Dominio)
+Archivo: `src/domain/constants.py`
 ```python
-class Container(containers.DeclarativeContainer):
-    
-    # 1. Configuración
-    # Lee tu archivo .env y lo hace accesible
-    config = providers.Configuration()
+class MainMenuOptions(Enum):
+    CONSULTAR = "Consultar Folio"
+    IA = "Asistente IA"
+    SOPORTE = "Soporte"
+    UBICACION = "Ubicación"  # <-- AGREGAR ESTO
+```
 
-    # 2. Recursos Compartidos (Infraestructura Base)
-    # Crea UNA sola conexión a la DB y a Redis para toda la app.
-    db = providers.Singleton(Database, db_url=config.db.url)
-    
-    # 3. Adaptadores (Los Obreros)
-    # Aquí dice: "Cuando alguien pida un ISessionRepository, dale un RedisSessionAdapter"
-    user_session_repository = providers.Factory(
-        RedisSessionAdapter, 
-        redis_client=redis_resource
-    )
+#### Paso 2: Crear la Respuesta Visual (Infraestructura)
+Archivo: `src/infrastructure/presentation/bot/views/bot_views.py`
 
-    # 4. Casos de Uso (Los Gerentes)
-    # Inyecta al obrero (repo) dentro del gerente (Use Case)
-    # 4. Casos de Uso (Los Gerentes)
-    # Inyecta al obrero (repo) dentro del gerente (Use Case)
-    handle_conversation_use_case = providers.Factory(
-        HandleConversationUseCase,
-        session_repo=user_session_repository,  # <--- CONEXIÓN MÁGICA
-        views=bot_views_dict,
-        get_service_use_case=get_service_by_folio_use_case
-    )
+1.  Actualizar la lista de botones en `NavigationMenuBotView`:
+    ```python
+    def main_menu_buttons() -> list:
+        return [
+            MainMenuOptions.CONSULTAR.value,
+            MainMenuOptions.UBICACION.value, # <-- AGREGAR ESTO
+            # ...
+        ]
+    ```
+2.  Crear el método que retorna el mensaje en `CommonBotView`:
+    ```python
+    @staticmethod
+    def location_message() -> BotResponse:
+        return BotResponse(
+            text="📍 Estamos ubicados en Av. Tecnológico #123, Centro.",
+            buttons=NavigationMenuBotView.back_to_main_menu_button()
+        )
+    ```
 
-    # Nota: Se eliminó el BotController para simplificar el flujo. 
-    # Los Handlers llaman directamente al Use Case.
+#### Paso 3: Conectar la Lógica del Menú (Aplicación)
+Archivo: `src/application/use_cases/handler_conversation.py`
+
+En el método `_handle_main_menu`:
+```python
+    def _handle_main_menu(self, dto: HandleMessageDto, session: UserSession) -> BotResponse:
+        selection = dto.message_text.strip().lower()
+
+        # ... otros if ...
+
+        # <-- AGREGAR ESTE BLOQUE
+        if selection == MainMenuOptions.UBICACION.value.lower():
+             return self.views['common'].location_message()
 ```
 
 ---
 
-## 🗺 Mapa de Dependencias: ¿Quién llama a quién?
+### 2. Cambiar de Tecnología (Refactorización)
 
-Esta sección explica de dónde viene cada pieza clave en los archivos principales.
+**Objetivo**: Cambiar el almacenamiento de sesiones de **Redis** a **Memoria RAM (Diccionario)** para desarrollo local sin Docker.
 
-### 1. `telegram_handlers.py` (La Entrada)
-*   **Ubicación**: `src/infrastructure/presentation/bot/handlers/`
-*   **Rol**: Traducir "Telegram" a "Python Puro".
-*   **Importa y Usa**:
-    *   `HandleConversationUseCase` (Inyectado por el Container).
-    *   `HandleMessageDto` (De `src/application/dtos/bot_dtos.py`): Para empaquetar los datos.
-    *   `dependency_injector.wiring`: `Provide` y `inject` para pedirle ayuda al Contenedor.
+#### Paso 1: Crear el Nuevo Adaptador
+Archivo Nuevo: `src/infrastructure/adapters/memory_session_adapter.py`
 
-### 2. `handler_conversation.py` (El Cerebro)
-*   **Ubicación**: `src/application/use_cases/`
-*   **Rol**: Máquina de estados. Decide si estás saludando, pidiendo folio o en soporte.
-*   **Importa y Usa**:
-    *   `ISessionRepository` (Interfaz en `src/domain/ports/`): Para leer/guardar estado del usuario (sin saber que es Redis).
-    *   `bot_views.py` (De `src/infrastructure/presentation/bot/views/`): Para saber QUÉ texto responder.
+Debe implementar la interfaz del dominio `ISessionRepository`.
 
----
+```python
+from typing import Dict
+from src.domain.ports.user_session_port import ISessionRepository
+from src.domain.entities.user_session import UserSession
 
-## 🔄 El Flujo TOTAL (Start-to-Finish)
+class MemorySessionRepository(ISessionRepository):
+    def __init__(self):
+        self._storage: Dict[int, UserSession] = {}
 
-Sigue la ruta de una petición desde que le das `Enter` en la terminal hasta que el usuario ve el mensaje.
+    def save_session(self, user_id: int, session: UserSession) -> None:
+        self._storage[user_id] = session
 
-### Fase 1: El Arranque (`main.py`)
-1.  **Ejecución**: Corres `python main.py`.
-2.  **Container**: Se crea `container = Container()`.
-3.  **Wiring**: `container.init_resources()` conecta todos los cables. Ahora las funciones con `@inject` ya tienen sus dependencias listas.
-4.  **Bot**: `ApplicationBuilder` arranca el loop de Telegram y carga los handlers.
+    def get_session(self, user_id: int) -> UserSession:
+        return self._storage.get(user_id, UserSession()) # Retorna sesión default si no existe
+```
 
-### Fase 2: El Mensaje ("Consultar Folio")
-5.  **Telegram**: El usuario escribe "consultar folio". Telegram API envía un JSON al bot.
-6.  **Handler**: `telegram_handlers.handle_telegram_message` atrapa el JSON.
-    *   Extrae `user_id`, `text`.
-    *   Crea `HandleMessageDto`.
-    *   Llama a `conversation_handler.execute(input_dto)`.
+#### Paso 2: Cambiar la Inyección de Dependencias
+Archivo: `src/infrastructure/container.py`
 
-### Fase 3: La Decisión (Clean Core)
-7.  **Use Case**:
-    *   Llama al Repo (`Redis`) -> "Dame la sesión del usuario 123".
-    *   El Repo (`RedisSessionAdapter`) descarga de Redis y devuelve un objeto `UserSession`.
-    *   El Use Case ve: Estado actual = `MAIN_MENU`. Mensaje = "consultar folio".
-    *   Lógica: "Ah, quiere consultar. Cambio estado a `WAITING_FOR_FOLIO`".
-    *   Llama al Repo (`Redis`) -> "Guarda la nueva sesión".
-    *   Busca la Vista: `views['consult'].request_folio_message()`.
+El contenedor controla qué implementación usa toda la aplicación. Solo necesitas cambiarlo aquí.
 
-### Fase 4: La Respuesta
-8.  **Vista**: `bot_views.py` retorna un objeto `BotResponse`:
-    *   Texto: `<b>Consulta de Servicio</b>...` (HTML)
-    *   Botones: `["volver al menu"]`
-9.  **Vuelta atrás**:
-    *   Vista -> Use Case -> Handler.
-10. **Handler (`Telegram`)**:
-    *   Recibe el `BotResponse`.
-    *   Convierte la lista de botones a `InlineKeyboardMarkup`.
-    *   Dispara: `update.effective_message.reply_text(..., parse_mode='HTML')`.
+```python
+# Importar el nuevo adaptador
+from src.infrastructure.adapters.memory_session_adapter import MemorySessionRepository
 
-11. **Usuario**: Ve el mensaje bonito en su celular. 📱
+class Container(containers.DeclarativeContainer):
+    
+    # ... (configuraciones previas)
+
+    # COMENTAR O ELIMINAR LA IMPLEMENTACIÓN DE REDIS
+    # session_repository = providers.Factory(
+    #     RedisSessionAdapter,
+    #     client=redis_client
+    # )
+
+    # AGREGAR LA NUEVA IMPLEMENTACIÓN (Singleton para mantener estado en memoria)
+    session_repository = providers.Singleton(
+        MemorySessionRepository
+    )
+
+    # El resto del código (conversation_handler, etc.) NO SE TOCA.
+    # Automáticamente comenzarán a usar MemorySessionRepository.
+```
 
 ---
 
-Esta estructura garantiza que puedes cambiar Redis por Mongo, o Telegram por WhatsApp, sin romper la lógica de tu negocio (`Fase 3`). Eso es Clean Architecture.
+### 3. Explicación del Flujo y Container
+
+#### Inyección de Dependencias (`src/infrastructure/container.py`)
+Este archivo es el único lugar donde se instancian las clases principales.
+*   `providers.Singleton`: Crea una única instancia compartida (ej. Conexión a DB).
+*   `providers.Factory`: Crea una instancia nueva cada vez que se inyecta.
+*   **Wiring**: Conecta estas instancias con los decoradores `@inject` en los handlers.
+
+#### Flujo de una Solicitud (Ej. "Consultar Folio")
+
+1.  **Entrada**: `telegram_handlers.py` recibe el JSON de Telegram.
+2.  **DTO**: Se convierte a `HandleMessageDto` (independiente de Telegram).
+3.  **Ejecución**: Se llama a `conversation_handler.execute(dto)`.
+4.  **Estado**: El caso de uso pide la sesión al `session_repository` (Redis/Memoria).
+5.  **Lógica**:
+    *   Verifica `BotState`.
+    *   Valida entrada con `FolioValidatorService` (si aplica).
+    *   Ejecuta lógica de negocio (ej. buscar en DB vía `get_service_use_case`).
+6.  **Salida**: El caso de uso obtiene una respuesta visual de `views` (`bot_views.py`) y la retorna.
+7.  **Respuesta**: `telegram_handlers.py` traduce el objeto `BotResponse` a la API de Telegram (`send_message`).
+
+---
+*Documentación Técnica Actualizada - XROM Systems*

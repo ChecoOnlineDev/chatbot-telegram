@@ -4,6 +4,7 @@ from src.domain.entities.user_session import UserSession
 from src.domain.ports.user_session_port import ISessionRepository
 from src.domain.constants import BotState, MainMenuOptions
 from src.application.use_cases.get_service_by_folio import GetServiceByFolioUseCase
+from src.application.services.folio_validator import FolioValidatorService
 
 class HandleConversationUseCase:
     def __init__(
@@ -60,15 +61,15 @@ class HandleConversationUseCase:
     def _handle_main_menu(self, dto: HandleMessageDto, session: UserSession) -> BotResponse:
         selection = dto.message_text.strip().lower()
 
-        if selection == MainMenuOptions.CONSULTAR.value:
+        if selection == MainMenuOptions.CONSULTAR.value.lower():
             return self._transition_to(dto.user_id, BotState.WAITING_FOR_FOLIO)
         
-        if selection == MainMenuOptions.SOPORTE.value:
+        if selection == MainMenuOptions.SOPORTE.value.lower():
             # TODO: Implementar transición a soporte si existe el estado, 
             # por ahora retornamos la vista de contacto directamente o transicionamos
             return self.views['support'].support_contact_bot_message()
 
-        if selection == MainMenuOptions.IA.value:
+        if selection == MainMenuOptions.IA.value.lower():
              return self.views['common'].ai_assistant_under_construction_message()
 
         
@@ -76,7 +77,22 @@ class HandleConversationUseCase:
         return self.views['common'].invalid_option_message()
 
     def _handle_waiting_for_folio(self, dto: HandleMessageDto, session: UserSession) -> BotResponse:
-        # Delegamos la logica de negocio al caso de uso especifico
+        text = dto.message_text.strip()
+        
+        # 0. Manejo explicito de "Intentar de nuevo" (no hacemos nada, solo pedimos folio otra vez o nos quedamos escuchando)
+        if text.lower() == "intentar de nuevo":
+             return self.views['consult'].request_folio_message()
+
+        # 1. Validar formato con el servicio de dominio
+        validated_folio = FolioValidatorService.extract_and_validate_folio(text)
+        
+        if not validated_folio:
+             return self.views['consult'].folio_not_found_message(text)
+             
+        # 2. Si es valido, actualizamos el dto con el folio normalizado para la busqueda
+        dto.message_text = validated_folio
+        
+        # 3. Delegamos la logica de negocio al caso de uso especifico
         response = self.get_service_use_case.execute(dto)
         
         if response.found and response.service_details:

@@ -15,7 +15,7 @@ class Container(containers.DeclarativeContainer):
 
     db_session = providers.Resource(get_db)
 
-    # Adapters
+
     technical_service_adapter = providers.Factory(
         SQLAlchemyTechnicalServiceAdapter,
         session=db_session

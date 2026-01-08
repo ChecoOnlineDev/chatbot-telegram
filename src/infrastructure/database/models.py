@@ -14,7 +14,7 @@ class TechnicalServiceModel(Base):
     folio: Mapped[str] = mapped_column(String(50), unique=True, index=True, nullable=False)
     
     status: Mapped[TechnicalServiceStatus] = mapped_column(
-        SqlAlchemyEnum(TechnicalServiceStatus), 
+        SqlAlchemyEnum(TechnicalServiceStatus, values_callable=lambda x: [e.value for e in x]), 
         nullable=False
     )
     reception_date: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
